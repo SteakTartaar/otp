@@ -35,3 +35,18 @@ class file:
 		except Exception as ex:
 			err("Unable to close file " + self.filename + " due to error: " + str(ex))
 
+class crypt:
+	_in = ""
+	_out = ""
+	key = ""
+
+	def __init__(self, _in, _out, key):
+		self._in = _in
+		self._out = _out
+		self.key = key
+
+	def encrypt(self):
+		pass
+
+	def decrypt(self):
+		pass
