@@ -7,10 +7,11 @@ import string
 import random
 
 open_files = []
+block_size = 65536
 
 def close_all():
-	for open_file in open_files:
-		open_file.close()
+	for _file in open_files:
+		_file.close()
 	alert("Closed all open files")
 
 def err(msg):
@@ -51,20 +52,35 @@ class _file:
 		except Exception as ex:
 			err("Unable to read file '" + self.fn + "' due to error: " + str(ex))
 
+	def read(self, size):
+		try:
+			cont = self.handle.read(size)
+			alert("Read " + str(size) + " of '" + self.fn + "'")
+			return cont
+		except Exception as ex:
+			err("Unable to read file '" + self.fn + "' due to error: " + str(ex))
+
 	def write(self, data):
 		try:
 			self.handle.write(data)
-			alert("Written to '" + self.fn + "'")
+			alert("Data written to '" + self.fn + "'")
 		except Exception as ex:
 			err("Unable to write to file '" + self.fn + "' due to error: " + str(ex))
 
 	def close(self):
 		try:
-			self.handle.close()
 			open_files.remove(self)
+			self.handle.close()
 			alert("Closed '" + self.fn + "'")
 		except Exception as ex:
 			alert("Unable to close file '" + self.fn + "' due to error: " + str(ex))
+
+	def get_size(self):
+		self.handle.seek(0,2)
+		size = self.handle.tell()
+		self.handle.seek(0,0)
+		alert("The size of the input file is " + str(size))
+		return size
 
 class rand:
 	src = None
@@ -89,28 +105,52 @@ class rand:
 class crypt:
 	_in = None
 	_out = None
-	key = None
+	_key = None
 	src = None
 
-	def __init__(self, _in, _out, key):
-		self._in = _in
-		self._out = _out
-		self.key = key
+	def __init__(self,infile, outfile, keyfile):
+		self._in = _file(infile, "r")
+		self._out = _file(outfile, "w")
+		if (os.path.exists(keyfile)):
+			self._key = _file(keyfile, "r")
+		else:
+			self.key = _file(keyfile, "w+")
+		self.src = rand()
+		self.process()
 
 	def encrypt(self):
-		pass
+		alert("Encrypting '" + self._in.fn + "'")
+		self.gen_key()
+		self.process()
 
 	def decrypt(self):
-		pass
+		alert("Decrypting " + self._in.fn + "'")
+		self.process()
+
+	def process(self):
+		self._key.handle.seek(0)
+		while 1:
+			data = self._in.read(block_size)
+			if not data:
+				break
+			key = self._key.read(len(data))
+			encrypted = ''.join([chr(ord(data_in) ^ ord(data_out)) for data_in, data_out in zip(data, key)])
+			self._out.write(encrypted)
 
 	def gen_key(self):
-		pass
+		alert("Generating key for '" + self._in.fn + "'")
+		key = ""
+		total = self._in.get_size()
+		while total > 0:
+			block = self.src.get_rand(min(block_size, total))
+			key += block
+			total = total - len(block)
+		self._key.write(key)
+		return key
 
 def test():
-	random = rand()
-	outfile = _file("out", "w")
-	bits = rand().get_rand(5)
-	outfile.write(bits)
+	crypto = crypt("infile.txt", "outfile.txt", "key.txt")
+	crypto.decrypt()
 	close_all()
 
 
