@@ -81,7 +81,7 @@ class rand:
 			return self.get_sys_rand(size)
 
 	def get_py_rand(self, size): 
-		return ''.join(random.choice(string.letters + string.digits) for x in range(size))
+		return ''.join(random.choice(string.ascii_letters + string.digits) for x in range(size))
 
 	def get_sys_rand(self, size):
 		return self.src.read(size)
