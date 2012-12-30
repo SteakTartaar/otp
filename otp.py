@@ -148,6 +148,14 @@ class crypt:
 		self._key.write(key)
 		return key
 
+class cloaker:
+	png = None
+	png_out = None
+
+	def __init__(self, fn):
+		png = _file(png, "r")
+		png_out = _file(png + "_out", "w")
+
 def test():
 	crypto = crypt("infile.txt", "outfile.txt", "key.txt")
 	crypto.decrypt()
