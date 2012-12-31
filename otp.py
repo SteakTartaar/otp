@@ -150,13 +150,13 @@ class crypt:
     rand = None
     block_size = 65536
 
-    def __init__(self, infile, outfile, keyfile):
+    def __init__(self, infile, outfile, _keyfile):
         self._in = _file(infile, "r")
         self._out = _file(outfile, "w")
-        if os.path.exists(keyfile):
-            self._key = _file(keyfile, "r")
+        if keyfile != None:
+            self._key = _keyfile
         else:
-            self._key = _file(keyfile, "w+")
+            self._key = _file("keyfile", "w+")
             self.src = rand()
             self.gen_key()
 
@@ -189,9 +189,36 @@ class crypt:
             self._out.write(encrypted)
 
 
+class cloaker:
+    # cloaker is used to get keys into and out of PNG files
+    # it takes a single png as input; if a key is found, it is extracted
+    # through extract_key() and placed in _keyfile
+    # if not, a None object is returned
+    # embed_key() takes the keyfile and embeds it in _png_out
+
+    _keyfile = None
+    _png_in = None
+    _png_out = None
+
+    def __init__(self, _png_in):
+        self._png_in = _png_in
+        if has_key():
+            extract_key()
+
+    def has_key(self):
+        # check if the png has a key embedded in it
+        pass
+
+    def extract_key(self):
+        # extract key from png and store it as _keyfile
+        pass
+
+    def embed_key(self):
+        # take the data from _keyfile and store it in _png_out
+        pass
+
+
 def test():
-    crypto = crypt("infile.txt", "outfile.txt", "key.txt")
-    crypto.process()
-    close_all()
+
 
 test()
