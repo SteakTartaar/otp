@@ -126,6 +126,9 @@ class _file:
         # move pointer to position
         self.fd.seek(a, b)
 
+    def move_ptr(self, pos):
+        self.fd.seek(pos)
+
     def get_size(self):
         # return size of opened file
         try:
@@ -202,8 +205,15 @@ class cloaker:
 
     def __init__(self, _png_in):
         self._png_in = _png_in
-        if has_key():
-            extract_key()
+        if self.has_key():
+            self.extract_key()     
+
+    def is_png(self):
+        self._png_in.move_ptr(1)
+        if self._png_in.read(3) == "PNG":
+            return True
+        else:
+            return False 
 
     def has_key(self):
         # check if the png has a key embedded in it
@@ -219,6 +229,8 @@ class cloaker:
 
 
 def test():
-
+    cloak = cloaker(_file("infile.txt", "r"))
+    print(cloak.is_png())
+    close_all()
 
 test()
