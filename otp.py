@@ -114,7 +114,7 @@ class crypt:
 		if (os.path.exists(keyfile)):
 			self._key = _file(keyfile, "r")
 		else:
-			self.key = _file(keyfile, "w+")
+			self._key = _file(keyfile, "w+")
 		self.src = rand()
 		self.process()
 
