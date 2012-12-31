@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# required for file existence checking and clean exist
+# required for file existence checking and clean exits
 import sys
 import os
 
@@ -182,6 +182,7 @@ class crypt:
             if not data:
                 break
             key = self._key.read(len(data))
+            # the heart of the algorithm: the magic of binary XOR
             encrypted = ''.join([chr(ord(data_in) ^ ord(data_out))
                                  for data_in, data_out in zip(data, key)])
             # writing in small chunks - bad for IO, but good for debugging
