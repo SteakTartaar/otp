@@ -1,168 +1,196 @@
 #!/usr/bin/env python
 
+# required for file existence checking and clean exist
 import sys
-import argparse
 import os
+
+# parse command line arguments in a clean way
+import argparse
+
+# used for generating random keys; string required if /dev/(u)random
+# isunavailable
 import string
 import random
 
+# keeps track of opened files for the clean close function
 open_files = []
-block_size = 65536
 
-def close_all():
-	for _file in open_files:
-		_file.close()
-	alert("Closed all open files")
-
-def err(msg):
-	sys.stderr.write("[X] Unrecoverable error: " + str(msg) + "\n")
-	sys.exit()
 
 def alert(msg):
-	print("[!] " + str(msg))
+    # simple command line messaging system
+    print("[!] " + str(msg))
 
-def get_args():
-	pass
 
-class _file:
-	fn = None
-	handle = None
-	cont = None
-	mode = None
+def err(msg):
+    # gracefully exit after unrecoverable error
+    sys.stderr.write("[X] Unrecoverable error: " + str(msg) + "\n")
+    try:
+        close_all()
+    except Exception as ex:
+        alert("Error closing files: " + str(ex))
+    sys.exit(1)
 
-	def __init__(self, fn, mode):
-		self.fn = fn
-		self.mode = mode
-		self.handle = self.open()
-		open_files.append(self)
 
-	def open(self):
-		try:
-			handle = open(self.fn, self.mode)
-			alert("Opened '" + self.fn + "'")
-			return handle
-		except Exception as ex:
-			err("Unable to open file '" + self.fn + "' due to error: " + str(ex))
+def close_all():
+        # In case of trapped fatal exception: close all open files
+    num = 0
+    for item in open_files:
+        item.close()
+        num += 1
+    alert("Closed " + str(num) + " open files")
 
-	def read(self):
-		try:
-			cont = self.handle.read()
-			alert("Read '" + self.fn + "'")
-			return cont
-		except Exception as ex:
-			err("Unable to read file '" + self.fn + "' due to error: " + str(ex))
-
-	def read(self, size):
-		try:
-			cont = self.handle.read(size)
-			alert("Read " + str(size) + " of '" + self.fn + "'")
-			return cont
-		except Exception as ex:
-			err("Unable to read file '" + self.fn + "' due to error: " + str(ex))
-
-	def write(self, data):
-		try:
-			self.handle.write(data)
-			alert("Data written to '" + self.fn + "'")
-		except Exception as ex:
-			err("Unable to write to file '" + self.fn + "' due to error: " + str(ex))
-
-	def close(self):
-		try:
-			open_files.remove(self)
-			self.handle.close()
-			alert("Closed '" + self.fn + "'")
-		except Exception as ex:
-			alert("Unable to close file '" + self.fn + "' due to error: " + str(ex))
-
-	def get_size(self):
-		self.handle.seek(0,2)
-		size = self.handle.tell()
-		self.handle.seek(0,0)
-		alert("The size of the input file is " + str(size))
-		return size
 
 class rand:
-	src = None
-	def __init__(self):
-		if os.path.exists('/dev/urandom'):
-			self.src = open('/dev/urandom', 'r')
-		elif os.path.exists('/dev/random'):
-			self.src = open('/dev/random', 'r')
+    # create a source of random data and read arbitrary chunks
+    src = None
 
-	def get_rand(self, size):
-		if self.src == None:
-			return self.get_py_rand(size)
-		else:
-			return self.get_sys_rand(size)
+    def __init__(self):
+        # check for POSIX standard sources
+        if os.path.exists('/dev/urandom'):
+            self.src = _file('/dev/urandom', 'r')
+        elif os.path.exists('/dev/random'):
+            self.src = _file('/dev/random', 'r')
 
-	def get_py_rand(self, size): 
-		return ''.join(random.choice(string.ascii_letters + string.digits) for x in range(size))
+    def get_rand(self, size):
+        # wrapper that delegates to current source of random data
+        if self.src == None:
+            return self.get_py_rand(size)
+        else:
+            return self.get_sys_rand(size)
 
-	def get_sys_rand(self, size):
-		return self.src.read(size)
+    def get_py_rand(self, size):
+        # 'cheap' randomizer that gets input from Python's random function
+        return ''.join(random.choice(string.ascii_letters + string.digits)
+                       for i in range(size))
+
+    def get_sys_rand(self, size):
+        # get random data by reading /dev/(u)random
+        return self.src.read(size)
+
+
+class _file:
+    # ugly, ugly wrapper around the built-in file()
+    # catches IO exceptions and allows me to alias some file operand commands
+    # file() itself seems to be an interface to stdio...
+
+    fn = None
+    fd = None
+    mode = None
+
+    def __init__(self, fn, mode):
+        self.fn = fn
+        self.mode = mode
+        self.fd = self.open()
+
+    def open(self):
+        try:
+            fd = open(self.fn, self.mode)
+            open_files.append(fd)
+            alert("Opened '" + self.fn + "'")
+            return fd
+        except Exception as ex:
+            err("Unable to open file '" + self.fn + "'' due to error: "
+                + str(ex))
+
+    def read(self, size):
+        try:
+            data = self.fd.read(size)
+            alert("Read " + str(size) + " from file '" + self.fn + "'")
+            return data
+        except Exception as ex:
+            err("Unable to read from file '" + self.fn + "' due to error: "
+                + str(ex))
+
+    def write(self, data):
+        try:
+            self.fd.write(data)
+            alert("Data written to '" + self.fn + "'")
+        except Exception as ex:
+            err("Unable to write data to '" + self.fn +
+                "'due to error: " + str(ex))
+
+    def close(self):
+        try:
+            self.fd.close()
+            open_files.remove(self)
+            alert("Closed '" + self.fn + "'")
+        except Exception as ex:
+            err("Unable to close file '" + self.fn + "' due to error: " +
+                str(ex))
+
+    def reset_ptr(self):
+        # return pointer to start of file
+        self.fd.seek(0, 0)
+
+    def move_ptr(self, a, b):
+        # move pointer to position
+        self.fd.seek(a, b)
+
+    def get_size(self):
+        # return size of opened file
+        try:
+            self.move_ptr(0, 2)
+            size = self.fd.tell()
+            self.reset_ptr()
+            return size
+        except Exception as ex:
+            alert("Unable to move pointer due to: " + str(ex))
+
 
 class crypt:
-	_in = None
-	_out = None
-	_key = None
-	src = None
+        # encryption and decryption class
+        # constructor takes three arguments:
+        # an input file (exists), an output file (new)
+        # and a keyfile
+        # if the keyfile doesn't exist, a new one is generated
 
-	def __init__(self,infile, outfile, keyfile):
-		self._in = _file(infile, "r")
-		self._out = _file(outfile, "w")
-		if (os.path.exists(keyfile)):
-			self._key = _file(keyfile, "r")
-		else:
-			self._key = _file(keyfile, "w+")
-		self.src = rand()
-		self.process()
+    _in = None
+    _out = None
+    _key = None
+    rand = None
+    block_size = 65536
 
-	def encrypt(self):
-		alert("Encrypting '" + self._in.fn + "'")
-		self.gen_key()
-		self.process()
+    def __init__(self, infile, outfile, keyfile):
+        self._in = _file(infile, "r")
+        self._out = _file(outfile, "w")
+        if os.path.exists(keyfile):
+            self._key = _file(keyfile, "r")
+        else:
+            self._key = _file(keyfile, "w+")
+            self.src = rand()
+            self.gen_key()
 
-	def decrypt(self):
-		alert("Decrypting " + self._in.fn + "'")
-		self.process()
+    def gen_key(self):
+        # generate key of the same size as the input file
+        alert("No key found, generating...")
+        key = ""
+        size = self._in.get_size()
+        while size > 0:
+            block = self.src.get_rand(min(self.block_size, size))
+            key += block
+            size = size - (len(block))
+            self._key.write(key)
 
-	def process(self):
-		self._key.handle.seek(0)
-		while 1:
-			data = self._in.read(block_size)
-			if not data:
-				break
-			key = self._key.read(len(data))
-			encrypted = ''.join([chr(ord(data_in) ^ ord(data_out)) for data_in, data_out in zip(data, key)])
-			self._out.write(encrypted)
+    def process(self):
+        # OTP algorithm used here goes two ways, so the same code
+        # handles encryption and decryption
+        # originally this printed chunks of the key to console for debugging
+        # but that stopped once it accidentally generated 'bell'
+        self._key.reset_ptr()
+        while 1:
+            data = self._in.read(self.block_size)
+            if not data:
+                break
+            key = self._key.read(len(data))
+            encrypted = ''.join([chr(ord(data_in) ^ ord(data_out))
+                                 for data_in, data_out in zip(data, key)])
+            # writing in small chunks - bad for IO, but good for debugging
+            self._out.write(encrypted)
 
-	def gen_key(self):
-		alert("Generating key for '" + self._in.fn + "'")
-		key = ""
-		total = self._in.get_size()
-		while total > 0:
-			block = self.src.get_rand(min(block_size, total))
-			key += block
-			total = total - len(block)
-		self._key.write(key)
-		return key
-
-class cloaker:
-	png = None
-	png_out = None
-
-	def __init__(self, fn):
-		png = _file(png, "r")
-		png_out = _file(png + "_out", "w")
 
 def test():
-	crypto = crypt("infile.txt", "outfile.txt", "key.txt")
-	crypto.decrypt()
-	close_all()
-
+    crypto = crypt("infile.txt", "outfile.txt", "key.txt")
+    crypto.process()
+    close_all()
 
 test()
-
-
-
