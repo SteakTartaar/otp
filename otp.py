@@ -30,9 +30,11 @@ def err(msg):
         alert("Error closing files: " + str(ex))
     sys.exit(1)
 
+
 def decode(msg):
     # function to decode bytes with UTF-8 encoding
     return msg.decode("utf-8")
+
 
 def close_all():
         # In case of trapped fatal exception: close all open files
@@ -130,10 +132,7 @@ class _file:
         self.fd.seek(a, b)
 
     def move_ptr(self, pos):
-<<<<<<< HEAD
         # move pointer to position
-=======
->>>>>>> eaac258bb4ddb7c0285bc808da692935e4de97f2
         self.fd.seek(pos)
 
     def get_size(self):
@@ -198,13 +197,14 @@ class crypt:
             # writing in small chunks - bad for IO, but good for debugging
             self._out.write(encrypted)
 
+
 class _png(_file):
     # specialized class with additional means of accessing png files
     # extends _file
 
-<<<<<<< HEAD
     mode = "rb+"
-=======
+
+
 class cloaker:
     # cloaker is used to get keys into and out of PNG files
     # it takes a single png as input; if a key is found, it is extracted
@@ -219,19 +219,18 @@ class cloaker:
     def __init__(self, _png_in):
         self._png_in = _png_in
         if self.has_key():
-            self.extract_key()     
+            self.extract_key()
 
     def is_png(self):
         self._png_in.move_ptr(1)
         if self._png_in.read(3) == "PNG":
             return True
         else:
-            return False 
+            return False
 
     def has_key(self):
         # check if the png has a key embedded in it
         pass
->>>>>>> eaac258bb4ddb7c0285bc808da692935e4de97f2
 
     def __init__(self, fn):
         self.fn = fn
@@ -243,21 +242,20 @@ class cloaker:
         data = self.read(8)
         self.reset_ptr()
         dec = []
-        # the magic numbers - see 
+        # the magic numbers - see
         # http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
-        std = [137,80,78,71,13,10,26,10]
+        std = [137, 80, 78, 71, 13, 10, 26, 10]
         for element in data:
             dec.append(element)
         return dec == std
 
+
 def test():
-<<<<<<< HEAD
+
     png = _png("red.png")
     print(png.is_png())
-=======
     cloak = cloaker(_file("infile.txt", "r"))
     print(cloak.is_png())
->>>>>>> eaac258bb4ddb7c0285bc808da692935e4de97f2
     close_all()
 
 test()
