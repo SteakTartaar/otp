@@ -203,10 +203,13 @@ class _png(_file):
     # extends _file
 
     mode = "rb+"
+    headers = []
 
     def __init__(self, fn):
         self.fn = fn
         self.fd = self.open()
+        if !self.is_png:
+            err("This is not a PNG file")
 
     def is_png(self):
         # compares first eight bytes of file with the PNG standard
@@ -221,11 +224,12 @@ class _png(_file):
             dec.append(ord(element))
         return dec == std
 
-
 def test():
 
     png = _png("red.png")
-    print(png.is_png())
+    png.reset_ptr()
+    png.move_ptr(9)
+    print(png.read(16))
     close_all()
 
 test()
