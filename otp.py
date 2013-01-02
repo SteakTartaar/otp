@@ -204,34 +204,6 @@ class _png(_file):
 
     mode = "rb+"
 
-
-class cloaker:
-    # cloaker is used to get keys into and out of PNG files
-    # it takes a single png as input; if a key is found, it is extracted
-    # through extract_key() and placed in _keyfile
-    # if not, a None object is returned
-    # embed_key() takes the keyfile and embeds it in _png_out
-
-    _keyfile = None
-    _png_in = None
-    _png_out = None
-
-    def __init__(self, _png_in):
-        self._png_in = _png_in
-        if self.has_key():
-            self.extract_key()
-
-    def is_png(self):
-        self._png_in.move_ptr(1)
-        if self._png_in.read(3) == "PNG":
-            return True
-        else:
-            return False
-
-    def has_key(self):
-        # check if the png has a key embedded in it
-        pass
-
     def __init__(self, fn):
         self.fn = fn
         self.fd = self.open()
@@ -246,7 +218,7 @@ class cloaker:
         # http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
         std = [137, 80, 78, 71, 13, 10, 26, 10]
         for element in data:
-            dec.append(element)
+            dec.append(ord(element))
         return dec == std
 
 
@@ -254,8 +226,6 @@ def test():
 
     png = _png("red.png")
     print(png.is_png())
-    cloak = cloaker(_file("infile.txt", "r"))
-    print(cloak.is_png())
     close_all()
 
 test()
