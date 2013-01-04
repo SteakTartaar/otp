@@ -44,6 +44,13 @@ def close_all():
         num += 1
     alert("Closed " + str(num) + " open files")
 
+def get_args():
+    # create, populate and return an argument parser
+    parser = argparse.ArgumentParser(description="One Time Pad encryption")
+    parser.add_argument('infile')
+    parser.add_argument('outfile')
+    parser.add_argument('keyfile')
+    return parser.parse_args()
 
 class rand:
     # create a source of random data and read arbitrary chunks
@@ -51,9 +58,7 @@ class rand:
 
     def __init__(self):
         # check for POSIX standard sources
-        if os.path.exists('/dev/urandom'):
-            self.src = _file('/dev/urandom', 'r')
-        elif os.path.exists('/dev/random'):
+        if os.path.exists('/dev/random'):
             self.src = _file('/dev/random', 'r')
 
     def get_rand(self, size):
@@ -125,25 +130,29 @@ class _file:
 
     def reset_ptr(self):
         # return pointer to start of file
-        self.fd.seek(0, 0)
+        self.move_ptr_dual_args(0, 0)
 
-    def move_ptr(self, a, b):
+    def move_ptr_dual_args(self, a, b):
         # move pointer to position
-        self.fd.seek(a, b)
+        try:
+            self.fd.seek(a, b)
+        except Exception as ex:
+            err("Unable to move pointer due to " + str(ex))
 
     def move_ptr(self, pos):
         # move pointer to position
-        self.fd.seek(pos)
+        try:
+            self.fd.seek(pos)
+        except Exception as ex:
+            err("Unable to move pointer due to " + str(ex))
 
     def get_size(self):
         # return size of opened file
-        try:
-            self.move_ptr(0, 2)
-            size = self.fd.tell()
-            self.reset_ptr()
-            return size
-        except Exception as ex:
-            alert("Unable to move pointer due to: " + str(ex))
+        self.move_ptr_dual_args(0, 2)
+        size = self.fd.tell()
+        self.reset_ptr()
+        return size
+
 
 
 class crypt:
@@ -159,13 +168,13 @@ class crypt:
     rand = None
     block_size = 65536
 
-    def __init__(self, infile, outfile, _keyfile):
+    def __init__(self, infile, outfile, keyfile):
         self._in = _file(infile, "r")
         self._out = _file(outfile, "w")
-        if keyfile != None:
-            self._key = _keyfile
+        if os.path.exists(keyfile):
+            self._key = _file(keyfile, "r")
         else:
-            self._key = _file("keyfile", "w+")
+            self._key = _file(keyfile, "w+")
             self.src = rand()
             self.gen_key()
 
@@ -208,7 +217,7 @@ class _png(_file):
     def __init__(self, fn):
         self.fn = fn
         self.fd = self.open()
-        if !self.is_png:
+        if self.is_png() == False:
             err("This is not a PNG file")
 
     def is_png(self):
@@ -225,11 +234,9 @@ class _png(_file):
         return dec == std
 
 def test():
+    args = get_args()
+    crypto = crypt(args.infile, args.outfile, args.keyfile)
+    crypto.process()
 
-    png = _png("red.png")
-    png.reset_ptr()
-    png.move_ptr(9)
-    print(png.read(16))
-    close_all()
 
 test()
