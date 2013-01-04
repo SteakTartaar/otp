@@ -130,25 +130,28 @@ class _file:
 
     def reset_ptr(self):
         # return pointer to start of file
-        self.move_ptr_dual_args(0, 0)
+        self.move_ptr(0, 0)
 
-    def move_ptr_dual_args(self, a, b):
-        # move pointer to position
-        try:
-            self.fd.seek(a, b)
-        except Exception as ex:
-            err("Unable to move pointer due to " + str(ex))
-
-    def move_ptr(self, pos):
-        # move pointer to position
-        try:
-            self.fd.seek(pos)
-        except Exception as ex:
-            err("Unable to move pointer due to " + str(ex))
+    def move_ptr(self, *args):
+        # overloaded method to move the pointer within a file
+        if len(args) == 2:
+            try:
+                self.fd.seek(args[1])
+            except Exception as ex:
+                err("Unable to move pointer due to " + str(ex))
+                alert(str(args[1]))
+        elif len(args) == 3:
+            try:
+                self.fd.seek(args[1], args[2])
+            except Exception as ex:
+                alert(str(args[1]) + " " + str(args[2]))
+                err("Unable to move pointer due to " + str(ex))
+        else:
+            err("Only two arguments allowed")
 
     def get_size(self):
         # return size of opened file
-        self.move_ptr_dual_args(0, 2)
+        self.move_ptr(0, 2)
         size = self.fd.tell()
         self.reset_ptr()
         return size
