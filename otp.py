@@ -141,8 +141,8 @@ class _file:
             try:
                 self.fd.seek(args[1])
             except Exception as ex:
-                err("Unable to move pointer due to " + str(ex))
                 alert(str(args[1]))
+                err("Unable to move pointer due to " + str(ex))
         elif len(args) == 3:
             try:
                 self.fd.seek(args[1], args[2])
