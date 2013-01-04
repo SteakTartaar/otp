@@ -239,6 +239,13 @@ class _png(_file):
             dec.append(ord(element))
         return dec == std
 
+    def create_chunk(self, pos, title, data):
+        pass
+
+    def read_chunk(self, pos):
+        data = ""
+        return data
+
 def test():
     args = get_args()
     crypto = crypt(args.infile, args.outfile, args.keyfile)
