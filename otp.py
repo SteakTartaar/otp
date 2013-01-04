@@ -106,7 +106,10 @@ class _file:
         try:
             data = self.fd.read(size)
             alert("Read " + str(size) + " from file '" + self.fn + "'")
-            return data
+            if data:
+                return data
+            else:
+                alert("Tried reading data but none found, assuming EOF")
         except Exception as ex:
             err("Unable to read from file '" + self.fn + "' due to error: "
                 + str(ex))
