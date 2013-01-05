@@ -12,8 +12,8 @@ import argparse
 import string
 import random
 
-# allow easier PNG editing (from https://github.com/drj11/pypng)
-import png
+# used for crc calcs
+import binascii
 
 # keeps track of opened files for the clean close function
 open_files = []
@@ -217,10 +217,49 @@ class crypt:
             # writing in small chunks - bad for IO, but good for debugging
             self._out.write(encrypted)
 
-def test():
-    args = get_args()
-    crypto = crypt(args.infile, args.outfile, args.keyfile)
-    crypto.process()
+class _png(_file):
+    # _file subclass with extra image handling
 
+    def __init__(self, fn, mode):
+        self.fn = fn
+        self.mode = mode
+        self.fd = self.open()
+        if not self.is_png():
+            err(self.fn + " does not appear to be a PNG file")
+
+    def is_png(self):
+        # check the first eight bytes of a file to see if they match the
+        # PNG signature
+        header = self.read(8)
+        header_dec = []
+        for dec in header:
+            header_dec.append(dec)
+        match = [137, 80, 78, 71, 13, 10, 26, 10]
+        if header_dec == match:
+            return True
+        else:
+            return False
+
+    def create_chunk(self, data):
+        # create a new chunk
+        # consists of title, length, data and crc block
+        title = "exTr"
+        length = 4 + len(data)
+        alert(str(title + data))
+        alert(str(length))
+
+
+    def gen_crc(self, title, data):
+        length = len(title) + len(data)
+        # generate a new crc for a chunk
+        return 1
+
+
+def test():
+    try:
+        red = _png("red.png", "rb")
+        red.create_chunk("quick")
+    except KeyboardInterrupt:
+        err("'Aborting")
 
 test()
