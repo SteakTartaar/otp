@@ -12,6 +12,9 @@ import argparse
 import string
 import random
 
+# allow easier PNG editing (from https://github.com/drj11/pypng)
+import png
+
 # keeps track of opened files for the clean close function
 open_files = []
 
@@ -137,17 +140,19 @@ class _file:
 
     def move_ptr(self, *args):
         # overloaded method to move the pointer within a file
-        if len(args) == 2:
+        if len(args) == 1:
             try:
+                alert("Moving pointer to " + str(args[0]))
                 self.fd.seek(args[1])
             except Exception as ex:
-                alert(str(args[1]))
+                alert(str(args[0]))
                 err("Unable to move pointer due to " + str(ex))
-        elif len(args) == 3:
+        elif len(args) == 2:
             try:
-                self.fd.seek(args[1], args[2])
+                alert("Moving pointer to " + str(args[0]) + ", " + str(args[1]))
+                self.fd.seek(args[0], args[1])
             except Exception as ex:
-                alert(str(args[1]) + " " + str(args[2]))
+                alert(str(args[0]) + " " + str(args[1]))
                 err("Unable to move pointer due to " + str(ex))
         else:
             err("Only two arguments allowed")
@@ -211,40 +216,6 @@ class crypt:
                                  for data_in, data_out in zip(data, key)])
             # writing in small chunks - bad for IO, but good for debugging
             self._out.write(encrypted)
-
-
-class _png(_file):
-    # specialized class with additional means of accessing png files
-    # extends _file
-
-    mode = "rb+"
-    headers = []
-
-    def __init__(self, fn):
-        self.fn = fn
-        self.fd = self.open()
-        if self.is_png() == False:
-            err("This is not a PNG file")
-
-    def is_png(self):
-        # compares first eight bytes of file with the PNG standard
-        self.reset_ptr()
-        data = self.read(8)
-        self.reset_ptr()
-        dec = []
-        # the magic numbers - see
-        # http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
-        std = [137, 80, 78, 71, 13, 10, 26, 10]
-        for element in data:
-            dec.append(ord(element))
-        return dec == std
-
-    def create_chunk(self, pos, title, data):
-        pass
-
-    def read_chunk(self, pos):
-        data = ""
-        return data
 
 def test():
     args = get_args()
