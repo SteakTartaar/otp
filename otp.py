@@ -15,6 +15,9 @@ import random
 # used for crc calcs
 import binascii
 
+# create bigendian ints for the PNG chunks
+import struct
+
 # keeps track of opened files for the clean close function
 open_files = []
 
@@ -47,6 +50,7 @@ def close_all():
         num += 1
     alert("Closed " + str(num) + " open files")
 
+
 def get_args():
     # create, populate and return an argument parser
     parser = argparse.ArgumentParser(description="One Time Pad encryption")
@@ -54,6 +58,7 @@ def get_args():
     parser.add_argument('outfile')
     parser.add_argument('keyfile')
     return parser.parse_args()
+
 
 class rand:
     # create a source of random data and read arbitrary chunks
@@ -165,7 +170,6 @@ class _file:
         return size
 
 
-
 class crypt:
         # encryption and decryption class
         # constructor takes three arguments:
@@ -217,8 +221,12 @@ class crypt:
             # writing in small chunks - bad for IO, but good for debugging
             self._out.write(encrypted)
 
+
 class _png(_file):
     # _file subclass with extra image handling
+
+    crc_table = [None]*256
+    crc_table_computed = False
 
     def __init__(self, fn, mode):
         self.fn = fn
@@ -243,22 +251,48 @@ class _png(_file):
     def create_chunk(self, data):
         # create a new chunk
         # consists of title, length, data and crc block
-        title = "exTr"
-        length = 4 + len(data)
-        alert(str(title + data))
-        alert(str(length))
+        title = str.encode("exTr")
+        size = struct.pack('>I', len(data))
+        chunk = bytearray(title + data)
+        crc = struct.pack('I',self.gen_crc(chunk))
+        return size + chunk + crc
 
+    def gen_crc(self, chunk):
+        # direct port of the sample implementation at
+        # http://www.w3.org/TR/2003/REC-PNG-20031110/#D-CRCAppendix
+        return self.update_crc(0xffffffff, chunk, len(chunk)) ^ 0xffffffff
 
-    def gen_crc(self, title, data):
-        length = len(title) + len(data)
-        # generate a new crc for a chunk
-        return 1
+    def make_crc_table(self):
+        # create a quick lookup table for 8-byte values
+        c = 0
+        n = 0
+        k = 0
+        for n in range(256):
+            c = n
+            for k in range(8):
+                if c & 1:
+                    c = 0xedb88320 ^ (c >> 1)
+                else:
+                    c = c >> 1
+            self.crc_table[n] = c
+        self.crc_table_computed = True
+
+    def update_crc(self, crc, buffer, length):
+        c = crc
+        n = 0
+        if not self.crc_table_computed:
+            self.make_crc_table()
+        for n in range(length):
+            c = self.crc_table[(c ^ buffer[n]) & 0xff] ^ (c >> 8)
+        return c
 
 
 def test():
     try:
         red = _png("red.png", "rb")
-        red.create_chunk("quick")
+        out = _file("out.txt", "wb+")
+        chunk = red.create_chunk(str.encode("foo"))
+        out.write(chunk)       
     except KeyboardInterrupt:
         err("'Aborting")
 
