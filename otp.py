@@ -53,7 +53,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="One Time Pad encryption")
     parser.add_argument('infile')
     parser.add_argument('outfile')
-    parser.add_argument('image')
+    #parser.add_argument('image')
     return parser.parse_args()
 
 
@@ -188,6 +188,7 @@ class crypt:
         self._out = _file(outfile, "wb")
         if os.path.exists("key.tmp"):
             # previous key found, decoding
+            alert("Key found, starting decoding")
             self._key = _file("key.tmp", "rb")
         else:
             # no key found, generating new one
@@ -208,7 +209,7 @@ class crypt:
             block = self.src.get_rand(min(self.block_size, size))
             key += block
             size = size - (len(block))
-            self._key.write(key)
+            self._key.write(bytes(key, 'UTF-8'))
 
     def process(self):
         # OTP algorithm used here goes two ways, so the same code
@@ -222,10 +223,10 @@ class crypt:
                 break
             key = self._key.read(len(data))
             # the heart of the algorithm: the magic of binary XOR
-            encrypted = ''.join([chr(ord(data_in) ^ ord(data_out))
+            encrypted = ''.join([chr(data_in ^ data_out)
                                  for data_in, data_out in zip(data, key)])
             # writing in small chunks - bad for IO, but good for debugging
-            self._out.write(encrypted)
+            self._out.write(bytes(encrypted, 'UTF-8'))
 
 
 class _png(_file):
@@ -251,11 +252,7 @@ class _png(_file):
             err("No data in header")
         header_dec = []
         for dec in header:
-            # windows reads these differently it seems...
-            if os.name == "POSIX":
-                header_dec.append(dec)
-            else:
-                header_dec.append(ord(dec))
+            header_dec.append(dec)
         match = [137, 80, 78, 71, 13, 10, 26, 10]
         if header_dec == match:
             return True
@@ -264,14 +261,9 @@ class _png(_file):
 
     def put_key(self, _keyfile):
         # write key after IHDR chunk
-        key = ""
         _keyfile.reset_ptr()
-        while 1:
-            data = _keyfile.read(65535)
-            if not data:
-                break
-            key = key + data
-        injected = _file("injected.png", 'w+')
+        key = _keyfile.read(_keyfile.get_size())
+        injected = _file("injected.png", 'wb+')
         init = self.read(33)
         injected.write(init)
         chunk = self.create_chunk(key)
@@ -284,11 +276,12 @@ class _png(_file):
                 injected.write(data)
 
     def get_key(self):
-        _key = _file("key.tmp", "rb")
-        self.reset_ptr()
-        self.move_ptr(33)
-        length = self.read(4)
-        alert(str(length))
+        pass
+        # _key = _file("key.tmp", "wb+")
+        # self.reset_ptr()
+        # self.move_ptr(33)
+        # length = self.read(4)
+        
 
     def create_chunk(self, data):
         # create a new chunk
@@ -335,11 +328,11 @@ class _png(_file):
 def test():
     try:
         args = get_args()
-        image = _png(args.image, "rb+")
-        image.get_key()
+        #image = _png(args.image, "rb+")
+        #image.get_key()
         crypto = crypt(args.infile, args.outfile)
-        if not image.has_key:
-            image.put_key(crypto._key)
+        #if not image.has_key:
+            #image.put_key(crypto._key)
 
     except KeyboardInterrupt:
         err("'Aborting")
