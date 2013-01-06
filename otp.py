@@ -183,7 +183,7 @@ class crypt:
     block_size = 65536
 
     def __init__(self, infile, outfile):
-        # open the source file, output file, and the image used for key storage
+        # open the source file, output file, and the temporary keyfile
         self._in = _file(infile, "rb")
         self._out = _file(outfile, "wb")
         if os.path.exists("key.tmp"):
@@ -294,6 +294,7 @@ class _png(_file):
         # create a new chunk
         # consists of title, length, data and crc block
         title = "exTr"
+        # size needs to be entered big-endian
         size = struct.pack('>I', len(data))
         chunk = title + data
         crc = struct.pack('I', self.gen_crc(chunk))
@@ -320,6 +321,8 @@ class _png(_file):
         self.crc_table_computed = True
 
     def update_crc(self, crc, buffer, length):
+        # can't really remember how this works 
+        # something something xor bitshift fiddlery
         c = crc
         n = 0
         if not self.crc_table_computed:
