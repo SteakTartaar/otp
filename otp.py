@@ -248,6 +248,26 @@ class _png(_file):
         else:
             return False
 
+    def put_key(self, key):
+        injected = _file(self.fn, 'w+')
+        init = self.read(33)
+        injected.write(init)
+        chunk = create_chunk(key)
+        injected.write(chunk)
+        while 1:
+            data = self.read(65535)
+            if not data:
+                break
+            else:
+                injected.write(data)
+
+    def get_key(self):
+        key = _file("key.tmp", 'w+')
+        self.reset_ptr()
+        self.move_ptr(37)
+        header = self.read(4)
+        alert(header = "exTr")
+
     def create_chunk(self, data):
         # create a new chunk
         # consists of title, length, data and crc block
@@ -289,10 +309,8 @@ class _png(_file):
 
 def test():
     try:
-        red = _png("red.png", "rb")
-        out = _file("out.txt", "wb+")
-        chunk = red.create_chunk(str.encode("foo"))
-        out.write(chunk)       
+        red = _png("red.png", "r")
+        close_all()     
     except KeyboardInterrupt:
         err("'Aborting")
 
