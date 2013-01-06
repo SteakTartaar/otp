@@ -12,9 +12,6 @@ import argparse
 import string
 import random
 
-# used for crc calcs
-import binascii
-
 # create bigendian ints for the PNG chunks
 import struct
 
@@ -56,7 +53,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="One Time Pad encryption")
     parser.add_argument('infile')
     parser.add_argument('outfile')
-    parser.add_argument('keyfile')
+    parser.add_argument('image')
     return parser.parse_args()
 
 
