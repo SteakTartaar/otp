@@ -148,9 +148,8 @@ class _file:
         if len(args) == 1:
             try:
                 alert("Moving pointer to " + str(args[0]))
-                self.fd.seek(args[1])
+                self.fd.seek(args[0])
             except Exception as ex:
-                alert(str(args[0]))
                 err("Unable to move pointer due to " + str(ex))
         elif len(args) == 2:
             try:
@@ -185,20 +184,20 @@ class crypt:
 
     def __init__(self, infile, outfile):
         # open the source file, output file, and the image used for key storage
-        self._in = _file(infile, "r")
-        self._out = _file(outfile, "w")
+        self._in = _file(infile, "rb")
+        self._out = _file(outfile, "wb")
         if os.path.exists("key.tmp"):
             # previous key found, decoding
-            self._key = _file("key.tmp", "r")
+            self._key = _file("key.tmp", "rb")
         else:
             # no key found, generating new one
-            self._key = _file("key.tmp", "w")
+            self._key = _file("key.tmp", "wb")
             self.src = rand()
             self.gen_key()
+            # I'm sorry. I'm so sorry...
             self._key.close()
-            self._key = _file("key.tmp", "r")
+            self._key = _file("key.tmp", "rb")
         self.process()
-
 
     def gen_key(self):
         # generate key of the same size as the input file
@@ -248,12 +247,15 @@ class _png(_file):
         # PNG signature
         header = self.read(8)
         self.reset_ptr()
-        if header ==  None:
+        if header == None:
             err("No data in header")
         header_dec = []
         for dec in header:
-            # TODO: Windows and Linux read these differently... current version works in Linux
-            header_dec.append(ord(dec))
+            # windows reads these differently it seems...
+            if os.name == "POSIX":
+                header_dec.append(dec)
+            else:
+                header_dec.append(ord(dec))
         match = [137, 80, 78, 71, 13, 10, 26, 10]
         if header_dec == match:
             return True
@@ -282,9 +284,11 @@ class _png(_file):
                 injected.write(data)
 
     def get_key(self):
-        #retrieve key from image and write to key.tmp
-        key = ""
-        return False
+        _key = _file("key.tmp", "rb")
+        self.reset_ptr()
+        self.move_ptr(33)
+        length = self.read(4)
+        alert(str(length))
 
     def create_chunk(self, data):
         # create a new chunk
@@ -328,7 +332,7 @@ class _png(_file):
 def test():
     try:
         args = get_args()
-        image = _png(args.image, "r+")
+        image = _png(args.image, "rb+")
         image.get_key()
         crypto = crypt(args.infile, args.outfile)
         if not image.has_key:
