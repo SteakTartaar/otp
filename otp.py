@@ -104,7 +104,7 @@ class _file:
             alert("Opened '" + self.fn + "'")
             return fd
         except Exception as ex:
-            err("Unable to open file '" + self.fn + "'' due to error: "
+            err("Unable to open file '" + self.fn + "' due to error: "
                 + str(ex))
 
     def read(self, size):
@@ -130,11 +130,14 @@ class _file:
     def close(self):
         try:
             self.fd.close()
-            open_files.remove(self)
             alert("Closed '" + self.fn + "'")
         except Exception as ex:
             err("Unable to close file '" + self.fn + "' due to error: " +
                 str(ex))
+        try:
+            open_files.remove(self)
+        except Exception as ex:
+            pass
 
     def reset_ptr(self):
         # return pointer to start of file
@@ -180,15 +183,22 @@ class crypt:
     rand = None
     block_size = 65536
 
-    def __init__(self, infile, outfile, keyfile):
+    def __init__(self, infile, outfile):
+        # open the source file, output file, and the image used for key storage
         self._in = _file(infile, "r")
         self._out = _file(outfile, "w")
-        if os.path.exists(keyfile):
-            self._key = _file(keyfile, "r")
+        if os.path.exists("key.tmp"):
+            # previous key found, decoding
+            self._key = _file("key.tmp", "r")
         else:
-            self._key = _file(keyfile, "w+")
+            # no key found, generating new one
+            self._key = _file("key.tmp", "w")
             self.src = rand()
             self.gen_key()
+            self._key.close()
+            self._key = _file("key.tmp", "r")
+        self.process()
+
 
     def gen_key(self):
         # generate key of the same size as the input file
@@ -222,8 +232,9 @@ class crypt:
 class _png(_file):
     # _file subclass with extra image handling
 
-    crc_table = [None]*256
+    crc_table = [None] * 256
     crc_table_computed = False
+    has_key = False
 
     def __init__(self, fn, mode):
         self.fn = fn
@@ -236,20 +247,32 @@ class _png(_file):
         # check the first eight bytes of a file to see if they match the
         # PNG signature
         header = self.read(8)
+        self.reset_ptr()
+        if header ==  None:
+            err("No data in header")
         header_dec = []
         for dec in header:
-            header_dec.append(dec)
+            # TODO: Windows and Linux read these differently... current version works in Linux
+            header_dec.append(ord(dec))
         match = [137, 80, 78, 71, 13, 10, 26, 10]
         if header_dec == match:
             return True
         else:
             return False
 
-    def put_key(self, key):
-        injected = _file(self.fn, 'w+')
+    def put_key(self, _keyfile):
+        # write key after IHDR chunk
+        key = ""
+        _keyfile.reset_ptr()
+        while 1:
+            data = _keyfile.read(65535)
+            if not data:
+                break
+            key = key + data
+        injected = _file("injected.png", 'w+')
         init = self.read(33)
         injected.write(init)
-        chunk = create_chunk(key)
+        chunk = self.create_chunk(key)
         injected.write(chunk)
         while 1:
             data = self.read(65535)
@@ -259,19 +282,17 @@ class _png(_file):
                 injected.write(data)
 
     def get_key(self):
-        key = _file("key.tmp", 'w+')
-        self.reset_ptr()
-        self.move_ptr(37)
-        header = self.read(4)
-        alert(header = "exTr")
+        #retrieve key from image and write to key.tmp
+        key = ""
+        return False
 
     def create_chunk(self, data):
         # create a new chunk
         # consists of title, length, data and crc block
-        title = str.encode("exTr")
+        title = "exTr"
         size = struct.pack('>I', len(data))
-        chunk = bytearray(title + data)
-        crc = struct.pack('I',self.gen_crc(chunk))
+        chunk = title + data
+        crc = struct.pack('I', self.gen_crc(chunk))
         return size + chunk + crc
 
     def gen_crc(self, chunk):
@@ -300,14 +321,19 @@ class _png(_file):
         if not self.crc_table_computed:
             self.make_crc_table()
         for n in range(length):
-            c = self.crc_table[(c ^ buffer[n]) & 0xff] ^ (c >> 8)
+            c = self.crc_table[(c ^ ord(buffer[n])) & 0xff] ^ (c >> 8)
         return c
 
 
 def test():
     try:
-        red = _png("red.png", "r")
-        close_all()     
+        args = get_args()
+        image = _png(args.image, "r+")
+        image.get_key()
+        crypto = crypt(args.infile, args.outfile)
+        if not image.has_key:
+            image.put_key(crypto._key)
+
     except KeyboardInterrupt:
         err("'Aborting")
 
